@@ -26,7 +26,11 @@ func ProcessCallback(
 	ctx sdk.Context, callbackType types.CallbackType,
 	callbackData types.CallbackData, callbackExecutor func(sdk.Context) error,
 ) (err error) {
-	cachedCtx, writeFn := ctx.CacheContext()
+	cachedCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	cachedCtx = cachedCtx.WithGasMeter(storetypes.NewGasMeter(callbackData.ExecutionGasLimit))
 
 	defer func() {
@@ -35,6 +39,9 @@ func ProcessCallback(
 
 		// recover from all panics except during SendPacket callbacks
 		if r := recover(); r != nil {
+			if _, fatal := r.(interface{ FatalExecution() }); fatal {
+				panic(r)
+			}
 			if callbackType == types.CallbackTypeSendPacket {
 				panic(r)
 			}

@@ -63,7 +63,11 @@ func (k *Keeper) RecvPacket(goCtx context.Context, msg *types.MsgRecvPacket) (*t
 	//
 	// If the packet was already received, perform a no-op
 	// Use a cached context to prevent accidental state changes
-	cacheCtx, writeFn := ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	err = k.recvPacket(cacheCtx, msg.Packet, msg.ProofCommitment, msg.ProofHeight)
 
 	switch err {
@@ -87,7 +91,11 @@ func (k *Keeper) RecvPacket(goCtx context.Context, msg *types.MsgRecvPacket) (*t
 	isSuccess := true
 	for _, pd := range msg.Packet.Payloads {
 		// Cache context so that we may discard state changes from callback if the acknowledgement is unsuccessful.
-		cacheCtx, writeFn = ctx.CacheContext()
+		cacheCtx, writeFn, cacheScope, cacheErr = sdk.CacheContextWithScope(ctx)
+		if cacheErr != nil {
+			return nil, cacheErr
+		}
+		defer sdk.AbortCacheScope(cacheScope)
 		cb := k.Router.Route(pd.DestinationPort)
 		res := cb.OnRecvPacket(cacheCtx, msg.Packet.SourceClient, msg.Packet.DestinationClient, msg.Packet.Sequence, pd, signer)
 
@@ -167,7 +175,11 @@ func (k *Keeper) Acknowledgement(goCtx context.Context, msg *types.MsgAcknowledg
 		return nil, errorsmod.Wrapf(ibcerrors.ErrUnauthorized, "relayer %s is not authorized to update client %s", msg.Signer, msg.Packet.SourceClient)
 	}
 
-	cacheCtx, writeFn := ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	err = k.acknowledgePacket(cacheCtx, msg.Packet, msg.Acknowledgement, msg.ProofAcked, msg.ProofHeight)
 
 	switch err {
@@ -221,7 +233,11 @@ func (k *Keeper) Timeout(goCtx context.Context, timeout *types.MsgTimeout) (*typ
 		return nil, errorsmod.Wrapf(ibcerrors.ErrUnauthorized, "relayer %s is not authorized to update client %s", timeout.Signer, timeout.Packet.SourceClient)
 	}
 
-	cacheCtx, writeFn := ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	err = k.timeoutPacket(cacheCtx, timeout.Packet, timeout.ProofUnreceived, timeout.ProofHeight)
 
 	switch err {

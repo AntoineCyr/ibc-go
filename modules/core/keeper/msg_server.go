@@ -445,7 +445,11 @@ func (k *Keeper) RecvPacket(goCtx context.Context, msg *channeltypes.MsgRecvPack
 	//
 	// If the packet was already received, perform a no-op
 	// Use a cached context to prevent accidental state changes
-	cacheCtx, writeFn := ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	channelVersion, err := k.ChannelKeeper.RecvPacket(cacheCtx, msg.Packet, msg.ProofCommitment, msg.ProofHeight)
 
 	switch err {
@@ -463,7 +467,11 @@ func (k *Keeper) RecvPacket(goCtx context.Context, msg *channeltypes.MsgRecvPack
 	// Perform application logic callback
 	//
 	// Cache context so that we may discard state changes from callback if the acknowledgement is unsuccessful.
-	cacheCtx, writeFn = ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr = sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	ack := cbs.OnRecvPacket(cacheCtx, channelVersion, msg.Packet, relayer)
 	if ack == nil || ack.Success() {
 		// write application state changes for asynchronous and successful acknowledgements
@@ -510,7 +518,11 @@ func (k *Keeper) Timeout(goCtx context.Context, msg *channeltypes.MsgTimeout) (*
 	//
 	// If the timeout was already received, perform a no-op
 	// Use a cached context to prevent accidental state changes
-	cacheCtx, writeFn := ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	channelVersion, err := k.ChannelKeeper.TimeoutPacket(cacheCtx, msg.Packet, msg.ProofUnreceived, msg.ProofHeight, msg.NextSequenceRecv)
 
 	switch err {
@@ -559,7 +571,11 @@ func (k *Keeper) TimeoutOnClose(goCtx context.Context, msg *channeltypes.MsgTime
 	//
 	// If the timeout was already received, perform a no-op
 	// Use a cached context to prevent accidental state changes
-	cacheCtx, writeFn := ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	channelVersion, err := k.ChannelKeeper.TimeoutOnClose(cacheCtx, msg.Packet, msg.ProofUnreceived, msg.ProofClose, msg.ProofHeight, msg.NextSequenceRecv)
 
 	switch err {
@@ -612,7 +628,11 @@ func (k *Keeper) Acknowledgement(goCtx context.Context, msg *channeltypes.MsgAck
 	//
 	// If the acknowledgement was already received, perform a no-op
 	// Use a cached context to prevent accidental state changes
-	cacheCtx, writeFn := ctx.CacheContext()
+	cacheCtx, writeFn, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	channelVersion, err := k.ChannelKeeper.AcknowledgePacket(cacheCtx, msg.Packet, msg.Acknowledgement, msg.ProofAcked, msg.ProofHeight)
 
 	switch err {

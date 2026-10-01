@@ -66,7 +66,11 @@ func (k Keeper) executeTx(ctx sdk.Context, sourcePort, destPort, destChannel str
 
 	// CacheContext returns a new context with the multi-store branched into a cached storage object
 	// writeCache is called only if all msgs succeed, performing state transitions atomically
-	cacheCtx, writeCache := ctx.CacheContext()
+	cacheCtx, writeCache, cacheScope, cacheErr := sdk.CacheContextWithScope(ctx)
+	if cacheErr != nil {
+		return nil, cacheErr
+	}
+	defer sdk.AbortCacheScope(cacheScope)
 	for i, msg := range msgs {
 		if m, ok := msg.(sdk.HasValidateBasic); ok {
 			if err := m.ValidateBasic(); err != nil {
@@ -82,13 +86,12 @@ func (k Keeper) executeTx(ctx sdk.Context, sourcePort, destPort, destChannel str
 		txMsgData.MsgResponses[i] = protoAny
 	}
 
-	writeCache()
-
 	txResponse, err := proto.Marshal(txMsgData)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "failed to marshal tx data")
 	}
 
+	writeCache()
 	return txResponse, nil
 }
 
